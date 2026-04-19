@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>unicycle_brain</name>
+  <version>0.0.1</version>
+  <description>Unicycle control</description>
+
+  <maintainer email="radoslaw.olejniczak@student.put.poznan.pl">Olejniczak Radosław</maintainer>
+  <license>NONE</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
