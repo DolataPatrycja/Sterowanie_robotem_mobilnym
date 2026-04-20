@@ -60,12 +60,15 @@ class robot_model(Node):
             desired_theta = math.atan2(dy, dx)
 
             distance_error = math.sqrt(dx ** 2 + dy ** 2)
-            angle_error = desired_theta - self.theta
-
-            k_v = 1.0
-            k_w = 2.0
-
-            self.v = k_v * distance_error
+            angle_error = math.atan2(
+                math.sin(desired_theta - self.theta),
+                math.cos(desired_theta - self.theta)
+            )
+            # wzmocnienia predkosci
+            k_v = 4
+            k_w = 4
+            #obliczenia predkosci
+            self.v = k_v * distance_error * math.cos(angle_error)
             self.omega = k_w * angle_error
 
             # ograniczenia
@@ -77,7 +80,7 @@ class robot_model(Node):
         self.y += self.v * math.sin(self.theta) * self.dt
         self.theta += self.omega * self.dt
 
-        # normalizacja kąta (stabilność)
+        # normalizacja kąta
         self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
 
         msg = Odometry()
