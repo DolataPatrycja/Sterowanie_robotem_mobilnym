@@ -1,4 +1,5 @@
 from geometry_msgs.msg import PoseStamped
+from nav_msgs.msg import Path
 from rclpy.node import Node
 import rclpy
 
@@ -12,7 +13,6 @@ import json
 class trajectory_generator(Node):
     def __init__(self, traj_type: trajectory_type, points_per_second):
         super().__init__('trajectory_generator')
-
 
         config_path = os.path.join(
             os.path.dirname(__file__),
@@ -29,6 +29,9 @@ class trajectory_generator(Node):
         self.msg_type = self.config["topic"]["target_pose"]["msg_type"]
         self.topic_name = self.config["topic"]["target_pose"]["name"]
         self.queue_size = self.config["topic"]["target_pose"]["queue_size"]
+        self.path_pub = self.create_publisher(Path, '/path', 1)
+        self.path_msg = Path()
+        self.path_msg.header.frame_id = "odom"
 
         self.trajectory_publisher = self.create_publisher(
             PoseStamped,
@@ -59,6 +62,11 @@ class trajectory_generator(Node):
             msg.pose.position.y = B * np.sin(b * t)
 
         self.trajectory_publisher.publish(msg)
+        self.path_msg.header.stamp = self.get_clock().now().to_msg()
+        self.path_msg.poses.append(msg)
+
+        self.path_pub.publish(self.path_msg)
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -66,6 +74,7 @@ def main(args=None):
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()
+
 
 if __name__ == '__main__':
     main()
