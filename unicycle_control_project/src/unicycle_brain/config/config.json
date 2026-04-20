@@ -1,0 +1,74 @@
+{
+  "topic": {
+    "target_pose": {
+      "name": "/target_pose",
+      "msg_type": "PoseStamped",
+      "publish_every_x_second": 0.1,
+      "queue_size": 3
+    },
+    "odom": {
+      "name": "/odom",
+      "msg_type": "Odometry",
+      "publish_every_x_second": 0.1,
+      "queue_size": 10
+    },
+    "cmd_vel": {
+      "name": "/cmd_vel",
+      "msg_type": "Twist",
+      "publish_every_x_second": 0.1,
+      "queue_size": 10
+    },
+    "state_derivatives": {
+      "name": "/state_derivatives",
+      "msg_type": "TwistStamped",
+      "publish_every_x_second": 0.1,
+      "queue_size": 10
+    }
+  },
+
+  "node": {
+    "trajectory_generator": {
+      "name": "trajectory_generator"
+    },
+    "controller": {
+      "name": "controller"
+    },
+    "robot_model": {
+      "name": "robot_model"
+    }
+  },
+
+  "trajectory": {
+    "type": "Lissajou_curves",
+
+    "point": {
+      "x": 1.0,
+      "y": 1.0,
+      "theta": 0.0
+    },
+
+    "lissajous": {
+      "A": 1.0,
+      "B": 1.0,
+      "a": 1.0,
+      "b": 2.0,
+      "delta": 1.57
+    }
+  },
+
+  "controller": {
+    "pid": {
+      "kp": 1.0,
+      "ki": 0.0,
+      "kd": 0.1
+    }
+  },
+
+  "robot": {
+    "initial_state": {
+      "x": 0.0,
+      "y": 0.0,
+      "theta": 0.0
+    }
+  }
+}
