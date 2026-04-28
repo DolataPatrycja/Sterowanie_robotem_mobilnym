@@ -1,74 +1,93 @@
 {
-  "topic": {
-    "target_pose": {
-      "name": "/target_pose",
-      "msg_type": "PoseStamped",
-      "publish_every_x_second": 0.1,
-      "queue_size": 3
-    },
-    "odom": {
-      "name": "/odom",
-      "msg_type": "Odometry",
-      "publish_every_x_second": 0.1,
-      "queue_size": 10
-    },
-    "cmd_vel": {
-      "name": "/cmd_vel",
-      "msg_type": "Twist",
-      "publish_every_x_second": 0.1,
-      "queue_size": 10
-    },
-    "state_derivatives": {
-      "name": "/state_derivatives",
-      "msg_type": "TwistStamped",
-      "publish_every_x_second": 0.1,
-      "queue_size": 10
-    }
+  "project": {
+    "name": "unicycle_brain",
+    "description": "Sterowanie robotem mobilnym z linearyzacją statyczną"
   },
-
-  "node": {
+  "nodes": {
     "trajectory_generator": {
-      "name": "trajectory_generator"
+      "name": "/trajectory_generator"
     },
     "controller": {
-      "name": "controller"
+      "name": "/controller"
     },
     "robot_model": {
-      "name": "robot_model"
+      "name": "/robot_model"
     }
   },
-
-  "trajectory": {
-    "type": "Lissajou_curves",
-
-    "point": {
-      "x": 1.0,
-      "y": 1.0,
-      "theta": 0.0
+  "topics": {
+    "target_pose": {
+      "name": "/target_pose",
+      "msg_type": "geometry_msgs/PoseStamped",
+      "queue_size": 5,
+      "publish_every_x_second": 0.05
     },
-
-    "lissajous": {
-      "A": 1.0,
-      "B": 1.0,
-      "a": 1.0,
-      "b": 2.0,
-      "delta": 1.57
+    "control": {
+      "name": "/cmd_vel",
+      "msg_type": "geometry_msgs/Twist",
+      "queue_size": 5,
+      "publish_every_x_second": 0.05
+    },
+    "feedback": {
+      "odom": {
+        "name": "/odom",
+        "msg_type": "nav_msgs/Odometry",
+        "queue_size": 5,
+        "publish_every_x_second": 0.05
+      },
+      "state_derivatives": {
+        "name": "/state_derivatives",
+        "msg_type": "geometry_msgs/TwistStamped",
+        "queue_size": 5,
+        "publish_every_x_second": 0.05
+      }
+    },
+    "path": {
+      "name": "/path",
+      "msg_type": "nav_msgs/Path",
+      "queue_size": 1,
+      "publish_every_x_second": 0.05
     }
   },
-
-  "controller": {
-    "pid": {
-      "kp": 1.0,
-      "ki": 0.0,
-      "kd": 0.1
-    }
-  },
-
   "robot": {
     "initial_state": {
       "x": 0.0,
       "y": 0.0,
       "theta": 0.0
+    },
+    "limits": {
+      "v_max": 1.0,
+      "omega_max": 2.0
+    },
+    "model": {
+      "type": "unicycle",
+      "integration_dt": 0.05
+    }
+  },
+  "controller": {
+    "type": "PID",
+    "linear_velocity": {
+      "kp": 1.68,
+      "ki": 1.44,
+      "kd": 0.0
+    },
+    "angular_velocity": {
+      "kp": 4.0,
+      "ki": 6.25,
+      "kd": 0.0
+    }
+  },
+  "trajectory": {
+    "active_type": "lissajous",
+    "point": {
+      "x": 3.0,
+      "y": 2.0
+    },
+    "lissajous": {
+      "A": 2.0,
+      "B": 2.0,
+      "a": 1.0,
+      "b": 2.0,
+      "delta": 1.57
     }
   }
 }

@@ -1,89 +1,117 @@
-import rclpy
-from rclpy.node import Node
-from nav_msgs.msg import Odometry
-from geometry_msgs.msg import PoseStamped
+"""
+robot_model.py
+
+Węzeł ROS2 implementujący modelrobota mobilnego typu unicycle.
+
+Subskrybuje:
+    /cmd_vel
+
+Publikuje:
+    /odom
+Model:
+    x_dot = v * cos(theta)
+    y_dot = v * sin(theta)
+    theta_dot = omega
+"""
 import math
 import json
 import os
 
+import rclpy
+from rclpy.node import Node
 
-class robot_model(Node):
+from nav_msgs.msg import Odometry
+from geometry_msgs.msg import Twist
+
+
+class RobotModel(Node):
     def __init__(self):
-        super().__init__('robot_model')
+
+        super().__init__("robot_model")
 
         config_path = os.path.join(
             os.path.dirname(__file__),
-            '..',
-            'config',
-            'config.json'
+            "..",
+            "config",
+            "config.json"
         )
-        with open(config_path, "r") as f:
-            self.config = json.load(f)
+
+        with open(config_path, "r") as file:
+            self.config = json.load(file)
 
         self.x = self.config["robot"]["initial_state"]["x"]
         self.y = self.config["robot"]["initial_state"]["y"]
         self.theta = self.config["robot"]["initial_state"]["theta"]
 
-        self.v = 0.5
-        self.omega = 0.5
+        self.v_cmd = 0.0
+        self.omega_cmd = 0.0
+
+        self.dt = self.config["robot"]["model"]["integration_dt"]
+
+        self.odom_topic = self.config["topics"]["feedback"]["odom"]["name"]
+        self.odom_queue = self.config["topics"]["feedback"]["odom"]["queue_size"]
+
+        self.cmd_topic = self.config["topics"]["control"]["name"]
+        self.cmd_queue = self.config["topics"]["control"]["queue_size"]
 
         self.odom_pub = self.create_publisher(
             Odometry,
-            self.config["topic"]["odom"]["name"],
-            self.config["topic"]["odom"]["queue_size"]
+            self.odom_topic,
+            self.odom_queue
         )
 
-        # timer
-        self.dt = self.config["topic"]["odom"]["publish_every_x_second"]
-        self.timer = self.create_timer(self.dt, self.update)
-
-        self.target_pose = None
-
-        self.target_sub = self.create_subscription(
-            PoseStamped,
-            self.config["topic"]["target_pose"]["name"],
-            self.target_callback,
-            10
+        self.cmd_sub = self.create_subscription(
+            Twist,
+            self.cmd_topic,
+            self.cmd_callback,
+            self.cmd_queue
         )
 
-    def target_callback(self, msg):
-        self.target_pose = msg
+        self.timer = self.create_timer(
+            self.dt,
+            self.update
+        )
 
-    def update(self):
-        if self.target_pose is not None:
-            target_x = self.target_pose.pose.position.x
-            target_y = self.target_pose.pose.position.y
+    def cmd_callback(self, msg):
+        """
+        Odbiera sygnał sterujący robota.
 
-            dx = target_x - self.x
-            dy = target_y - self.y
+        Args:
+            msg (Twist):
+                linear.x  - prędkość liniowa [m/s]
+                angular.z - prędkość kątowa [rad/s]
+        """
 
-            desired_theta = math.atan2(dy, dx)
+        self.v_cmd = msg.linear.x
+        self.omega_cmd = msg.angular.z
 
-            distance_error = math.sqrt(dx ** 2 + dy ** 2)
-            angle_error = math.atan2(
-                math.sin(desired_theta - self.theta),
-                math.cos(desired_theta - self.theta)
-            )
-            # wzmocnienia predkosci
-            k_v = 4
-            k_w = 4
-            #obliczenia predkosci
-            self.v = k_v * distance_error * math.cos(angle_error)
-            self.omega = k_w * angle_error
+    def update_position_based_on_model(self):
+        """
+        Aktualizuje stan robota na podstawie modelu unicycle metodą całkowania Eulera.
 
-            # ograniczenia
-            self.v = min(self.v, 1.0)
-            self.omega = max(min(self.omega, 2.0), -2.0)
+        Równania:
+            x(k+1) = x(k) + v*cos(theta)*dt
+            y(k+1) = y(k) + v*sin(theta)*dt
+            theta(k+1) = theta(k) + omega*dt
+        """
 
-        # update modelu
-        self.x += self.v * math.cos(self.theta) * self.dt
-        self.y += self.v * math.sin(self.theta) * self.dt
-        self.theta += self.omega * self.dt
+        self.x += self.v_cmd * math.cos(self.theta) * self.dt
+        self.y += self.v_cmd * math.sin(self.theta) * self.dt
+        self.theta += self.omega_cmd * self.dt
 
-        # normalizacja kąta
-        self.theta = math.atan2(math.sin(self.theta), math.cos(self.theta))
+    def publish_odometry(self):
+        """
+        Tworzy i publikuje wiadomość odometrii robota.
+
+        Publikowane dane:
+            - pozycja x,y
+            - orientacja quaternion
+            - prędkość liniowa
+            - prędkość kątowa
+        """
 
         msg = Odometry()
+
         msg.header.stamp = self.get_clock().now().to_msg()
         msg.header.frame_id = "odom"
         msg.child_frame_id = "base_link"
@@ -92,24 +120,32 @@ class robot_model(Node):
         msg.pose.pose.position.y = self.y
         msg.pose.pose.position.z = 0.0
 
-        # quaternion
         msg.pose.pose.orientation.x = 0.0
         msg.pose.pose.orientation.y = 0.0
         msg.pose.pose.orientation.z = math.sin(self.theta / 2.0)
         msg.pose.pose.orientation.w = math.cos(self.theta / 2.0)
 
-        msg.twist.twist.linear.x = self.v
-        msg.twist.twist.angular.z = self.omega
+        msg.twist.twist.linear.x = self.v_cmd
+        msg.twist.twist.angular.z = self.omega_cmd
 
         self.odom_pub.publish(msg)
+
+    def update(self):
+        self.update_position_based_on_model()
+        self.publish_odometry()
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = robot_model()
+
+    node = RobotModel()
+
     rclpy.spin(node)
+
     node.destroy_node()
+
     rclpy.shutdown()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

@@ -1,80 +1,174 @@
+"""
+trajectory_gen.py
+
+Węzeł ROS2 implementujący generator trajektorii referencyjnej dla robota mobilnego typu unicycle.
+
+Publikuje:
+    /target_pose
+    /path
+
+Typy trajektorii:
+    - point
+    - Lissajou_curves
+"""
+
 from geometry_msgs.msg import PoseStamped
 from nav_msgs.msg import Path
 from rclpy.node import Node
 import rclpy
 
 from unicycle_brain.utils import trajectory_type
+
 import numpy as np
-import time
 import os
 import json
 
 
 class trajectory_generator(Node):
-    def __init__(self, traj_type: trajectory_type, points_per_second):
-        super().__init__('trajectory_generator')
+    def __init__(self, traj_type: trajectory_type):
+        super().__init__("trajectory_generator")
 
         config_path = os.path.join(
             os.path.dirname(__file__),
-            '..',
-            'config',
-            'config.json'
+            "..",
+            "config",
+            "config.json"
         )
 
-        with open(config_path, "r") as f:
-            self.config = json.load(f)
+        with open(config_path, "r") as file:
+            self.config = json.load(file)
+
         self.traj_type = traj_type
-        self.start_time = time.time()
-        self.frequency_data_publish = self.config["topic"]["target_pose"]["publish_every_x_second"]
-        self.msg_type = self.config["topic"]["target_pose"]["msg_type"]
-        self.topic_name = self.config["topic"]["target_pose"]["name"]
-        self.queue_size = self.config["topic"]["target_pose"]["queue_size"]
-        self.path_pub = self.create_publisher(Path, '/path', 1)
+
+        self.dt = self.config["topics"]["target_pose"]["publish_every_x_second"]
+
+        self.target_topic = self.config["topics"]["target_pose"]["name"]
+        self.target_queue = self.config["topics"]["target_pose"]["queue_size"]
+
+        self.path_topic = self.config["topics"]["path"]["name"]
+        self.path_queue = self.config["topics"]["path"]["queue_size"]
+
+        self.t = 0.0
+
+        self.target_pub = self.create_publisher(
+            PoseStamped,
+            self.target_topic,
+            self.target_queue
+        )
+
+        self.path_pub = self.create_publisher(
+            Path,
+            self.path_topic,
+            self.path_queue
+        )
+
         self.path_msg = Path()
         self.path_msg.header.frame_id = "odom"
 
-        self.trajectory_publisher = self.create_publisher(
-            PoseStamped,
-            self.topic_name,
-            self.queue_size
+        self.timer = self.create_timer(
+            self.dt,
+            self.trajectory_callback
         )
-        self.traj_timer = self.create_timer(self.frequency_data_publish, self.trajectory_callback)
 
-    def trajectory_callback(self):
-        msg = PoseStamped()
-        msg.header.stamp = self.get_clock().now().to_msg()
-        msg.header.frame_id = "map"
+    def generate_point(self, msg):
+        """
+        Generuje trajektorię punktową.
 
-        t = time.time() - self.start_time
+        Args:
+            msg (PoseStamped): Wiadomość wyjściowa.
 
-        if self.traj_type == trajectory_type.point:
-            msg.pose.position.x = self.config["trajectory"]["point"]["x"]
-            msg.pose.position.y = self.config["trajectory"]["point"]["y"]
+        Returns:
+            PoseStamped
+        """
 
-        elif self.traj_type == trajectory_type.Lissajou_curves:
-            A = self.config["trajectory"]["lissajous"]["A"]
-            B = self.config["trajectory"]["lissajous"]["B"]
-            a = self.config["trajectory"]["lissajous"]["a"]
-            b = self.config["trajectory"]["lissajous"]["b"]
-            delta = self.config["trajectory"]["lissajous"]["delta"]
+        msg.pose.position.x = self.config["trajectory"]["point"]["x"]
+        msg.pose.position.y = self.config["trajectory"]["point"]["y"]
 
-            msg.pose.position.x = A * np.sin(a * t + delta)
-            msg.pose.position.y = B * np.sin(b * t)
+        return msg
 
-        self.trajectory_publisher.publish(msg)
-        self.path_msg.header.stamp = self.get_clock().now().to_msg()
+    def generate_lissajous(self, msg):
+        """
+        Generuje trajektorię Lissajous.
+
+        Args:
+            msg (PoseStamped): Wiadomość wyjściowa.
+
+        Returns:
+            PoseStamped
+        """
+
+        A = self.config["trajectory"]["lissajous"]["A"]
+        B = self.config["trajectory"]["lissajous"]["B"]
+        a = self.config["trajectory"]["lissajous"]["a"]
+        b = self.config["trajectory"]["lissajous"]["b"]
+        delta = self.config["trajectory"]["lissajous"]["delta"]
+
+        msg.pose.position.x = A * np.sin(a * self.t + delta)
+        msg.pose.position.y = B * np.sin(b * self.t)
+
+        return msg
+
+    def update_path(self, msg, now):
+        """
+        Aktualizuje wiadomość Path.
+
+        Args:
+            msg (PoseStamped): Aktualny punkt trajektorii.
+            now: Aktualny czas ROS.
+
+        Returns:
+            None
+        """
+
+        self.path_msg.header.stamp = now
         self.path_msg.poses.append(msg)
 
+        if len(self.path_msg.poses) > 500:
+            self.path_msg.poses.pop(0)
+
         self.path_pub.publish(self.path_msg)
+
+    def trajectory_callback(self):
+        """
+        Callback timera.
+            - generuje kolejny punkt trajektorii,
+            - publikuje /target_pose,
+            - aktualizuje /path.
+        """
+
+        msg = PoseStamped()
+
+        now = self.get_clock().now().to_msg()
+
+        msg.header.stamp = now
+        msg.header.frame_id = "odom"
+
+        if self.traj_type == trajectory_type.point:
+            msg = self.generate_point(msg)
+
+        elif self.traj_type == trajectory_type.Lissajou_curves:
+            msg = self.generate_lissajous(msg)
+
+        self.target_pub.publish(msg)
+
+        self.update_path(msg, now)
+
+        self.t += self.dt
 
 
 def main(args=None):
     rclpy.init(args=args)
-    node = trajectory_generator(trajectory_type.Lissajou_curves, 10)
+
+    node = trajectory_generator(
+        trajectory_type.Lissajou_curves
+    )
+
     rclpy.spin(node)
+
     node.destroy_node()
+
     rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
