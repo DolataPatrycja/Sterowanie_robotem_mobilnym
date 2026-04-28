@@ -55,8 +55,8 @@
       "theta": 0.0
     },
     "limits": {
-      "v_max": 1.0,
-      "omega_max": 2.0
+      "v_max": 1.5,
+      "omega_max": 1.5
     },
     "model": {
       "type": "unicycle",
@@ -66,14 +66,14 @@
   "controller": {
     "type": "PID",
     "linear_velocity": {
-      "kp": 1.68,
-      "ki": 1.44,
+      "kp": 4.0,
+      "ki": 0.0,
       "kd": 0.0
     },
     "angular_velocity": {
-      "kp": 4.0,
-      "ki": 6.25,
-      "kd": 0.0
+      "kp": 10.0,
+      "ki": 0.5,
+      "kd": 0.1
     }
   },
   "trajectory": {
@@ -85,9 +85,9 @@
     "lissajous": {
       "A": 2.0,
       "B": 2.0,
-      "a": 1.0,
-      "b": 2.0,
-      "delta": 1.57
+      "a": 0.25,
+      "b": 0.5,
+      "delta": 0.0
     }
   }
 }
