@@ -49,6 +49,8 @@ class trajectory_generator(Node):
         self.path_queue = self.config["topics"]["path"]["queue_size"]
 
         self.t = 0.0
+        self.param_t = 0.0
+        self.reference_speed = 1.0
 
         self.target_pub = self.create_publisher(
             PoseStamped,
@@ -69,6 +71,29 @@ class trajectory_generator(Node):
             self.dt,
             self.trajectory_callback
         )
+
+    def advance_parameter(self, dx_dt, dy_dt):
+        """
+        Aktualizje punkt referencyjny py
+        poruszał się ze stałą prędkością 1 m/s.
+
+        Args:
+            dx_dt (float): Pochodna x względem parametru.
+            dy_dt (float): Pochodna y względem parametru.
+        """
+
+        reference_speed = 1.0
+
+        current_speed = np.sqrt(dx_dt ** 2 + dy_dt ** 2)
+
+        if current_speed < 0.2:
+            current_speed = 0.2
+
+        delta_t = (reference_speed / current_speed) * self.dt
+
+        delta_t = min(delta_t, 1.5 * self.dt)
+
+        self.t += delta_t
 
     def generate_point(self, msg):
         """
@@ -106,6 +131,11 @@ class trajectory_generator(Node):
         msg.pose.position.x = A * np.sin(a * self.t + delta)
         msg.pose.position.y = B * np.sin(b * self.t)
 
+        dx_dt = A * a * np.cos(a * self.t + delta)
+        dy_dt = B * b * np.cos(b * self.t)
+
+        self.advance_parameter(dx_dt, dy_dt)
+
         return msg
 
     def generate_curve(self,msg):
@@ -131,7 +161,7 @@ class trajectory_generator(Node):
             self.arc_finished = False
 
         if not hasattr(self, "arc_speed"):
-            self.arc_speed = 0.1
+            self.arc_speed = 1.0 / r
 
         if turning_right:
             circle_middle_point_x = r
@@ -171,6 +201,11 @@ class trajectory_generator(Node):
 
         msg.pose.position.x = A * np.sin(w * self.t)
         msg.pose.position.y = self.t * 0.3
+
+        dx_dt = A * w * np.cos(w * self.t)
+        dy_dt = 0.3
+
+        self.advance_parameter(dx_dt, dy_dt)
 
         return msg
 
@@ -223,6 +258,11 @@ class trajectory_generator(Node):
 
         msg.pose.position.x = A * ((self.t % period) / period)
         msg.pose.position.y = self.t * 0.3
+
+        dx_dt = A / period
+        dy_dt = 0.3
+
+        self.advance_parameter(dx_dt, dy_dt)
 
         return msg
 
@@ -283,20 +323,45 @@ class trajectory_generator(Node):
 
         self.update_path(msg, now)
 
-        self.t += self.dt
+        if self.traj_type in [
+            trajectory_type.point,
+            trajectory_type.square,
+            trajectory_type.curve
+        ]:
+            self.t += self.dt
 
 
 def main(args=None):
     rclpy.init(args=args)
 
-    node = trajectory_generator(
-        trajectory_type.Lissajou_curves
+    config_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "config",
+        "config.json"
     )
+
+    with open(config_path, "r") as file:
+        config = json.load(file)
+
+    active_name = config["trajectory"]["active_type"]
+
+    enum_map = {
+        "point": trajectory_type.point,
+        "lissajous": trajectory_type.Lissajou_curves,
+        "curve": trajectory_type.curve,
+        "harmonic": trajectory_type.harmonic,
+        "square": trajectory_type.square,
+        "saw": trajectory_type.saw
+    }
+
+    selected_type = enum_map[active_name.lower()]
+
+    node = trajectory_generator(selected_type)
 
     rclpy.spin(node)
 
     node.destroy_node()
-
     rclpy.shutdown()
 
 
