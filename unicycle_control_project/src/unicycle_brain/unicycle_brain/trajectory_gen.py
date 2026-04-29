@@ -108,6 +108,124 @@ class trajectory_generator(Node):
 
         return msg
 
+    def generate_curve(self,msg):
+        """
+        Generuje trajektorię łuku koła.
+
+        Args:
+            r             - promień łuku
+            alpha         - kąt końcowy [rad]
+            turning_right - kierunek skrętu
+
+        Returns:
+            PoseStamped
+        """
+        r = self.config["trajectory"]["curve"]["r"]
+        alpha = self.config["trajectory"]["curve"]["alpha"]
+        turning_right = self.config["trajectory"]["curve"]["turning_right"]
+
+        if not hasattr(self, "arc_angle"):
+            self.arc_angle = 0.0
+
+        if not hasattr(self, "arc_finished"):
+            self.arc_finished = False
+
+        if not hasattr(self, "arc_speed"):
+            self.arc_speed = 0.1
+
+        if turning_right:
+            circle_middle_point_x = r
+            circle_middle_point_y = 0
+            direction = -1.0
+        else:
+            circle_middle_point_x = -r
+            circle_middle_point_y = 0
+            direction = 1.0
+        if not self.arc_finished:
+            self.arc_angle += self.arc_speed * self.dt
+
+            if self.arc_angle >= alpha:
+                self.arc_angle = alpha
+                self.arc_finished = True
+
+        phi = direction * self.arc_angle
+
+        msg.pose.position.x = circle_middle_point_x + r * np.cos(phi)
+        msg.pose.position.y = circle_middle_point_y + r * np.sin(phi)
+
+        return msg
+
+    def generate_harmonic(self, msg):
+        """
+        Generuje trajektorię harmoniczną sinusoidalną.
+
+        Args:
+            msg (PoseStamped): Wiadomość wyjściowa.
+
+        Returns:
+            PoseStamped
+        """
+
+        w = self.config["trajectory"]["harmonic"]["w"]
+        A = self.config["trajectory"]["harmonic"]["Amplitude"]
+
+        msg.pose.position.x = A * np.sin(w * self.t)
+        msg.pose.position.y = self.t * 0.3
+
+        return msg
+
+    def generate_square(self, msg):
+        """
+        Generuje trajektorię kwadratu.
+
+        Args:
+            msg (PoseStamped): Wiadomość wyjściowa.
+
+        Returns:
+            PoseStamped
+        """
+
+        side_length = self.config["trajectory"]["square"]["side_length"]
+
+        local_t = self.t % (4.0 * side_length)
+
+        if local_t < side_length:
+            msg.pose.position.x = local_t
+            msg.pose.position.y = 0.0
+
+        elif local_t < 2.0 * side_length:
+            msg.pose.position.x = side_length
+            msg.pose.position.y = local_t - side_length
+
+        elif local_t < 3.0 * side_length:
+            msg.pose.position.x = 3.0 * side_length - local_t
+            msg.pose.position.y = side_length
+
+        else:
+            msg.pose.position.x = 0.0
+            msg.pose.position.y = 4.0 * side_length - local_t
+
+        return msg
+
+    def generate_saw(self, msg):
+        """
+        Generuje trajektorię piłokształtną.
+
+        Args:
+            msg (PoseStamped): Wiadomość wyjściowa.
+
+        Returns:
+            PoseStamped
+        """
+
+        period = self.config["trajectory"]["saw"]["w"]
+        A = self.config["trajectory"]["saw"]["Amplitude"]
+
+        msg.pose.position.x = A * ((self.t % period) / period)
+        msg.pose.position.y = self.t * 0.3
+
+        return msg
+
     def update_path(self, msg, now):
         """
         Aktualizuje wiadomość Path.
@@ -148,6 +266,18 @@ class trajectory_generator(Node):
 
         elif self.traj_type == trajectory_type.Lissajou_curves:
             msg = self.generate_lissajous(msg)
+
+        elif self.traj_type == trajectory_type.curve:
+            msg = self.generate_curve(msg)
+
+        elif self.traj_type == trajectory_type.harmonic:
+            msg = self.generate_harmonic(msg)
+
+        elif self.traj_type == trajectory_type.square:
+            msg = self.generate_square(msg)
+
+        elif self.traj_type == trajectory_type.saw:
+            msg = self.generate_saw(msg)
 
         self.target_pub.publish(msg)
 

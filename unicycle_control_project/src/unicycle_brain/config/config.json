@@ -88,6 +88,22 @@
       "a": 0.25,
       "b": 0.5,
       "delta": 0.0
+    },
+    "curve": {
+      "r": 1.0,
+      "alpha": 0.5,
+      "turning_right": false
+    },
+    "harmonic": {
+      "w": 5.0,
+      "Amplitude": 2.0
+    },
+    "square": {
+      "side_length": 1.0
+    },
+    "saw": {
+      "w": 5.0,
+      "Amplitude": 2.0
     }
   }
 }

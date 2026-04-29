@@ -57,15 +57,15 @@ def main():
     print("\nB0 =")
     sp.pprint(B0)
 
-    zeta_linear = 0.7
-    wn_linear = 1.2
+    zeta_linear = 1
+    wn_linear = 1
     kp_linear = 2 * zeta_linear * wn_linear
     ki_linear = wn_linear * wn_linear
 
     print(f"OBLICZONE NASTAWY LINIOWEGO PID:\n Kp:{kp_linear}\n Ki:{ki_linear}")
 
-    zeta_angular = 0.8
-    wn_angular = 2.5
+    zeta_angular = 1
+    wn_angular = 1
     kp_angular = 2 * zeta_angular * wn_angular
     ki_angular = wn_angular * wn_angular
 
