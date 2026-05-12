@@ -89,7 +89,7 @@ class RobotModel(Node):
         """
         Aktualizuje stan robota na podstawie modelu unicycle metodą całkowania Eulera.
 
-        Równania:
+        Równania modelu :
             x(k+1) = x(k) + v*cos(theta)*dt
             y(k+1) = y(k) + v*sin(theta)*dt
             theta(k+1) = theta(k) + omega*dt

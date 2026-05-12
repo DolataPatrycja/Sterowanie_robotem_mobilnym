@@ -232,17 +232,17 @@ class PIDController(Node):
             self.kd_angular
         )
 
-        linear_cmd = self.saturate(
-            linear_cmd,
-            -self.max_linear_velocity,
-            self.max_linear_velocity
-        )
-
-        angular_cmd = self.saturate(
-            angular_cmd,
-            -self.max_angular_velocity,
-            self.max_angular_velocity
-        )
+        # linear_cmd = self.saturate(
+        #     linear_cmd,
+        #     -self.max_linear_velocity,
+        #     self.max_linear_velocity
+        # )
+        #
+        # angular_cmd = self.saturate(
+        #     angular_cmd,
+        #     -self.max_angular_velocity,
+        #     self.max_angular_velocity
+        # )
 
         cmd = Twist()
 

@@ -78,16 +78,16 @@ class trajectory_generator(Node):
         poruszał się ze stałą prędkością 1 m/s.
 
         Args:
-            dx_dt (float): Pochodna x względem parametru.
-            dy_dt (float): Pochodna y względem parametru.
+            dx_dt (float): Prędkośc w x.
+            dy_dt (float): Prędkość w y.
         """
 
         reference_speed = 1.0
 
         current_speed = np.sqrt(dx_dt ** 2 + dy_dt ** 2)
 
-        if current_speed < 0.2:
-            current_speed = 0.2
+        if current_speed < 0.1:
+            current_speed = 0.1
 
         delta_t = (reference_speed / current_speed) * self.dt
 
@@ -271,7 +271,7 @@ class trajectory_generator(Node):
         Aktualizuje wiadomość Path.
 
         Args:
-            msg (PoseStamped): Aktualny punkt trajektorii.
+            msg (PoseStamped): Wiadomość wyjściowa.
             now: Aktualny czas ROS.
 
         Returns:

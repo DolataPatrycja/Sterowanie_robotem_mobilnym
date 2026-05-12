@@ -79,30 +79,30 @@
   "trajectory": {
     "active_type": "lissajous",
     "point": {
-      "x": 3.0,
-      "y": 2.0
+      "x": 10.0,
+      "y": 10.0
     },
     "lissajous": {
-      "A": 2.0,
+      "A": 3.0,
       "B": 2.0,
       "a": 0.25,
-      "b": 0.5,
+      "b": 0.1,
       "delta": 0.0
     },
     "curve": {
-      "r": 1.0,
-      "alpha": 0.5,
-      "turning_right": false
+      "r": 4.0,
+      "alpha": 3.14,
+      "turning_right": true
     },
     "harmonic": {
-      "w": 5.0,
-      "Amplitude": 2.0
+      "w": 1.0,
+      "Amplitude": 1.0
     },
     "square": {
       "side_length": 1.0
     },
     "saw": {
-      "w": 5.0,
+      "w": 10.0,
       "Amplitude": 2.0
     }
   }
