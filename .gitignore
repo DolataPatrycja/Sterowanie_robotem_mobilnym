@@ -1,0 +1,18 @@
+# ROS / colcon
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# ROS bag recordings
+**/bags/
+**/bags/**
+*.db3
+
+# IDE / environment
+.idea/
+.vscode/
+venv/
