@@ -14,6 +14,8 @@ def quaternion_to_yaw(x, y, z, w):
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     return math.atan2(siny_cosp, cosy_cosp)
 
+def wrap_angle(angle):
+    return math.atan2(math.sin(angle), math.cos(angle))
 
 class LivePlotNode(Node):
 
@@ -80,7 +82,11 @@ class LivePlotNode(Node):
 
         self.ex.append(self.target_x - x)
         self.ey.append(self.target_y - y)
-        self.eth.append(self.target_theta - theta)
+        #elf.eth.append(self.target_theta - theta)
+
+        desired_theta = math.atan2(self.target_y - y, self.target_x - x)
+        theta_error = wrap_angle(desired_theta - theta)
+        self.eth.append(theta_error)
 
     def update_plot(self, frame):
         self.ax_xy.clear()
