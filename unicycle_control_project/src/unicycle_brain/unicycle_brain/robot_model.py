@@ -22,6 +22,8 @@ from rclpy.node import Node
 
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
+from tf2_ros import TransformBroadcaster
+from geometry_msgs.msg import TransformStamped
 
 
 class RobotModel(Node):
@@ -67,6 +69,8 @@ class RobotModel(Node):
             self.cmd_queue
         )
 
+        self.tf_broadcaster = TransformBroadcaster(self)
+
         self.timer = self.create_timer(
             self.dt,
             self.update
@@ -100,21 +104,19 @@ class RobotModel(Node):
         self.theta += self.omega_cmd * self.dt
 
     def publish_odometry(self):
-        """
-        Tworzy i publikuje wiadomość odometrii robota.
+        """Tworzy i publikuje wiadomość odometrii oraz TF robota."""
 
-        Publikowane dane:
-            - pozycja x,y
-            - orientacja quaternion
-            - prędkość liniowa
-            - prędkość kątowa
-        """
+        current_time = self.get_clock().now().to_msg()
 
+        qz = math.sin(self.theta / 2.0)
+        qw = math.cos(self.theta / 2.0)
+
+        # 1. Publikacja /odom
         msg = Odometry()
-
-        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.stamp = current_time
         msg.header.frame_id = "odom"
-        msg.child_frame_id = "base_link"
+
+        msg.child_frame_id = "base_footprint"
 
         msg.pose.pose.position.x = self.x
         msg.pose.pose.position.y = self.y
@@ -122,13 +124,29 @@ class RobotModel(Node):
 
         msg.pose.pose.orientation.x = 0.0
         msg.pose.pose.orientation.y = 0.0
-        msg.pose.pose.orientation.z = math.sin(self.theta / 2.0)
-        msg.pose.pose.orientation.w = math.cos(self.theta / 2.0)
+        msg.pose.pose.orientation.z = qz
+        msg.pose.pose.orientation.w = qw
 
         msg.twist.twist.linear.x = self.v_cmd
         msg.twist.twist.angular.z = self.omega_cmd
 
         self.odom_pub.publish(msg)
+
+        transform = TransformStamped()
+        transform.header.stamp = current_time
+        transform.header.frame_id = "odom"
+        transform.child_frame_id = "base_footprint"
+
+        transform.transform.translation.x = self.x
+        transform.transform.translation.y = self.y
+        transform.transform.translation.z = 0.0
+
+        transform.transform.rotation.x = 0.0
+        transform.transform.rotation.y = 0.0
+        transform.transform.rotation.z = qz
+        transform.transform.rotation.w = qw
+
+        self.tf_broadcaster.sendTransform(transform)
 
     def update(self):
         self.update_position_based_on_model()
