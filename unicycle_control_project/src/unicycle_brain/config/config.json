@@ -66,14 +66,14 @@
   "controller": {
     "type": "PID",
     "linear_velocity": {
-      "kp": 4.0,
-      "ki": 0.0,
-      "kd": 0.0
+      "kp": 3.4135,
+      "ki": 2.3201,
+      "kd": 2.4898
     },
     "angular_velocity": {
-      "kp": 10.0,
-      "ki": 0.5,
-      "kd": 0.1
+      "kp": 3.4135,
+      "ki": 2.3201,
+      "kd": 2.4898
     }
   },
   "trajectory": {
